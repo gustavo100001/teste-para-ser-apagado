@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Painel Diário</title>
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --card: #131a26;
+      --border: #232d3f;
+      --text: #f3f6fb;
+      --muted: #9fb0c7;
+      --accent: #38bdf8;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+    }
+
+    body[data-theme="emerald"] {
+      --bg: #08120e;
+      --card: #0f1f19;
+      --border: #1d382e;
+      --text: #eef7f3;
+      --muted: #94b8a9;
+      --accent: #34d399;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+    }
+
+    body[data-theme="amber"] {
+      --bg: #120e08;
+      --card: #1f1910;
+      --border: #382d1d;
+      --text: #faf4eb;
+      --muted: #bfb099;
+      --accent: #fbbf24;
+      --ok: #22c55e;
+      --warn: #f97316;
+    }
+
+    body[data-theme="violet"] {
+      --bg: #0e0b17;
+      --card: #181326;
+      --border: #2c2342;
+      --text: #f4f1fa;
+      --muted: #aba0c7;
+      --accent: #a78bfa;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+    }
+
+    body[data-theme="graphite"] {
+      --bg: #0d0e10;
+      --card: #16181c;
+      --border: #282c34;
+      --text: #f2f3f5;
+      --muted: #a4a9b3;
+      --accent: #94a3b8;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Camada de Escurecimento Suave */
+    #dim-overlay {
+      position: fixed;
+      inset: 0;
+      background: #000000;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 9999;
+      transition: opacity 0.2s ease;
+    }
+
+    /* Modal de Seleção de Tema */
+    #theme-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 6, 12, 0.72);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    #theme-modal.open {
+      display: flex;
+    }
+
+    .theme-dialog {
+      width: 100%;
+      max-width: 360px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .theme-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .theme-option.active {
+      border-color: var(--accent);
+    }
+
+    .theme-swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      flex-shrink: 0;
+    }
+
+    /* Cabeçalho Principal */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 18px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .clickable-trigger {
+      cursor: pointer;
+      border-radius: 8px;
+      padding: 2px 6px;
+      margin: -2px -6px;
+      transition: background 0.15s;
+    }
+
+    .clickable-trigger:active {
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    #clock {
+      font-size: clamp(2.6rem, 9vw, 4.4rem);
+      font-weight: 700;
+      letter-spacing: -1px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    #date {
+      color: var(--accent);
+      font-size: 1.15rem;
+      font-weight: 500;
+      text-transform: capitalize;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pill-btn {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px 13px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .pill-btn:active {
+      transform: scale(0.97);
+    }
+
+    .moon-icon {
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    /* Banner de Notificação de Data Especial */
+    #special-alerts {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    #special-alerts.has-alerts {
+      display: flex;
+    }
+
+    .alert-banner {
+      background: rgba(245, 158, 11, 0.14);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      color: #fde68a;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 1.05rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .alert-banner.today {
+      background: rgba(56, 189, 248, 0.16);
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    /* Views / Abas */
+    .view {
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .view.active {
+      display: flex;
+    }
+
+    .subview-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 16px;
+    }
+
+    .subview-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .back-btn {
+      background: var(--accent);
+      color: #061018;
+      border: none;
+      border-radius: 10px;
+      padding: 9px 14px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* Grid e Cards */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+      gap: 12px;
+      align-content: start;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      min-width: 0;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-size: 0.92rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      height: 38px;
+      padding: 0 12px;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.92rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .icon-btn.primary {
+      width: 38px;
+      padding: 0;
+      background: var(--accent);
+      color: #061018;
+      border: none;
+      font-size: 1.45rem;
+      font-weight: 700;
+    }
+
+    .icon-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* Clima */
+    .weather-main {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #temp {
+      font-size: 2.6rem;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    #weather-desc {
+      color: var(--muted);
+      font-size: 1.08rem;
+      margin-top: 4px;
+    }
+
+    #wind {
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    /* Formulários e Listas */
+    .inline-form {
+      display: none;
+      align-items: stretch;
+      gap: 8px;
+      width: 100%;
+      margin-bottom: 12px;
+    }
+
+    .inline-form.open {
+      display: flex;
+    }
+
+    .input-field {
+      flex: 1 1 auto;
+      min-width: 0;
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 11px 13px;
+      font-size: 1.05rem;
+      outline: none;
+    }
+
+    .input-field:focus {
+      border-color: var(--accent);
+    }
+
+    .save-btn {
+      flex: 0 0 auto;
+      background: var(--accent);
+      color: #061018;
+      border: none;
+      border-radius: 10px;
+      padding: 0 15px;
+      font-weight: 700;
+      font-size: 0.98rem;
+      cursor: pointer;
+    }
+
+    ul.clean-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+
+    ul.clean-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 13px;
+      font-size: 1.1rem;
+    }
+
+    .task-item-left {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .task-check {
+      width: 21px;
+      height: 21px;
+      accent-color: var(--ok);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .task-text {
+      flex: 1;
+      cursor: pointer;
+      word-break: break-word;
+      line-height: 1.3;
+    }
+
+    li.done .task-text {
+      text-decoration: line-through;
+      color: var(--muted);
+    }
+
+    .del-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 1.4rem;
+      line-height: 1;
+      padding: 2px 6px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* Cronômetro */
+    .chrono-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 24px 16px;
+      text-align: center;
+    }
+
+    #chrono-display {
+      font-size: clamp(2.8rem, 11vw, 5rem);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -1px;
+    }
+
+    .chrono-controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn-lg {
+      padding: 13px 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 1.05rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-lg.start {
+      background: var(--ok);
+      color: #05140a;
+      border: none;
+    }
+
+    .btn-lg.pause {
+      background: var(--warn);
+      color: #170f02;
+      border: none;
+    }
+
+    /* Calendário */
+    .cal-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .cal-grid-month {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      text-align: center;
+    }
+
+    .cal-dow {
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding-bottom: 4px;
+    }
+
+    .cal-day {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .cal-day.empty {
+      background: transparent;
+      border-color: transparent;
+      cursor: default;
+    }
+
+    .cal-day.today {
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+
+    .cal-day.special {
+      background: rgba(245, 158, 11, 0.2);
+      border-color: var(--warn);
+      color: #fde68a;
+      font-weight: 700;
+    }
+
+    .cal-grid-year {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+    }
+
+    .mini-month {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px;
+    }
+
+    .mini-month-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 6px;
+      text-transform: capitalize;
+    }
+
+    .mini-days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+      font-size: 0.72rem;
+      text-align: center;
+    }
+
+    .mini-days span {
+      padding: 3px 1px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .mini-days span.special {
+      background: var(--warn);
+      color: #0b0f17;
+      font-weight: 700;
+    }
+
+    .mini-days span.today {
+      outline: 1px solid var(--accent);
+    }
+
+    /* Comandos Git */
+    .cmd-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .cmd-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .cmd-label {
+      font-size: 0.98rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .cmd-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92rem;
+      color: var(--accent);
+      background: #070a10;
+      padding: 9px 10px;
+      border-radius: 8px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body data-theme="navy">
+
+  <!-- CABEÇALHO SEMPRE VISÍVEL -->
+  <header>
+    <div class="header-left">
+      <div id="clock" class="clickable-trigger" title="Abrir Cronômetro">00:00</div>
+      <div id="date" class="clickable-trigger" title="Abrir Calendário">Carregando data...</div>
+    </div>
+    <div class="header-actions">
+      <button id="open-git-btn" class="pill-btn" type="button">Git / GitHub</button>
+      <button id="dim-btn" class="pill-btn" type="button" title="Toque para luminosidade • Segure para cores">
+        <svg class="moon-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+        </svg>
+        <span id="dim-label">Brilho</span>
+      </button>
+      <button id="fs-btn" class="pill-btn" type="button">⛶ Tela Cheia</button>
+    </div>
+  </header>
+
+  <!-- NOTIFICAÇÕES DE DATAS ESPECIAIS (HOJE / AMANHÃ) -->
+  <div id="special-alerts"></div>
+
+  <!-- ABA 1: INÍCIO -->
+  <section id="view-home" class="view active">
+    <main class="grid">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Clima • Aparecida de Goiânia</div>
+        </div>
+        <div class="weather-main">
+          <div>
+            <div id="temp">--°C</div>
+            <div id="weather-desc">Atualizando...</div>
+          </div>
+          <div id="wind"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Foco do Dia</div>
+          <div class="card-actions">
+            <button id="open-goals-btn" class="icon-btn" type="button" title="Metas por Blocos">Metas</button>
+            <button id="toggle-task-form" class="icon-btn primary" type="button" aria-label="Nova tarefa">+</button>
+          </div>
+        </div>
+        <form class="inline-form" id="task-form">
+          <input type="text" id="task-input" class="input-field" placeholder="Nova tarefa rápida..." autocomplete="off" required />
+          <button type="submit" class="save-btn">OK</button>
+        </form>
+        <ul id="task-list" class="clean-list"></ul>
+      </div>
+    </main>
+  </section>
+
+  <!-- ABA 2: CRONÔMETRO -->
+  <section id="view-chrono" class="view">
+    <div class="subview-bar">
+      <div class="subview-title">Cronômetro & Foco</div>
+      <button class="back-btn" type="button" data-go="view-home">← Início</button>
+    </div>
+    <div class="card chrono-box">
+      <div id="chrono-mode-label" style="color: var(--muted); font-size: 1rem;">Cronômetro Livre (Milissegundos)</div>
+      <div id="chrono-display">00:00.00</div>
+      <div class="chrono-controls">
+        <button id="chrono-start" class="btn-lg start" type="button">Iniciar</button>
+        <button id="chrono-reset" class="btn-lg" type="button">Zerar</button>
+      </div>
+      <div class="chrono-controls">
+        <button class="pill-btn preset-timer" data-min="25" type="button">Timer 25m</button>
+        <button class="pill-btn preset-timer" data-min="15" type="button">Timer 15m</button>
+        <button class="pill-btn preset-timer" data-min="5" type="button">Pausa 5m</button>
+        <button id="mode-stopwatch" class="pill-btn" type="button">Livre</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABA 3: CALENDÁRIO E DATAS ESPECIAIS -->
+  <section id="view-calendar" class="view">
+    <div class="subview-bar">
+      <div class="subview-title">Calendário & Datas Especiais</div>
+      <button class="back-btn" type="button" data-go="view-home">← Início</button>
+    </div>
+
+    <div class="card">
+      <div class="cal-toolbar">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button id="cal-prev" class="pill-btn" type="button">◀</button>
+          <strong id="cal-header-label" style="font-size:1.1rem; text-transform:capitalize;">Mês Ano</strong>
+          <button id="cal-next" class="pill-btn" type="button">▶</button>
+        </div>
+        <button id="cal-toggle-year" class="pill-btn" type="button">Ver Ano Inteiro</button>
+      </div>
+
+      <div id="cal-month-container">
+        <div class="cal-grid-month" style="margin-bottom:6px;">
+          <div class="cal-dow">Dom</div><div class="cal-dow">Seg</div><div class="cal-dow">Ter</div>
+          <div class="cal-dow">Qua</div><div class="cal-dow">Qui</div><div class="cal-dow">Sex</div><div class="cal-dow">Sáb</div>
+        </div>
+        <div id="cal-days" class="cal-grid-month"></div>
+      </div>
+
+      <div id="cal-year-container" class="cal-grid-year" style="display:none;"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title" id="selected-date-label">Toque em um dia acima para marcar</div>
+      </div>
+      <form id="special-date-form" class="inline-form" style="display:flex;">
+        <input type="text" id="special-title-input" class="input-field" placeholder="Nome da data especial (ex: Entrega Site)..." required />
+        <button type="submit" class="save-btn">Salvar</button>
+      </form>
+      <ul id="special-dates-list" class="clean-list"></ul>
+    </div>
+  </section>
+
+  <!-- ABA 4: METAS POR BLOCOS -->
+  <section id="view-goals" class="view">
+    <div class="subview-bar">
+      <div class="subview-title">Metas por Blocos</div>
+      <div style="display:flex; gap:8px;">
+        <button id="toggle-block-form" class="pill-btn" type="button">+ Bloco</button>
+        <button class="back-btn" type="button" data-go="view-home">← Início</button>
+      </div>
+    </div>
+
+    <div id="new-block-card" class="card" style="display:none;">
+      <form id="block-form" class="inline-form open" style="margin-bottom:0;">
+        <input type="text" id="block-name-input" class="input-field" placeholder="Nome do bloco (ex: Projetos Dev, Obra, Faculdade)..." required />
+        <button type="submit" class="save-btn">Criar</button>
+      </form>
+    </div>
+
+    <div id="goals-grid" class="grid"></div>
+  </section>
+
+  <!-- ABA 5: COMANDOS GIT / GITHUB -->
+  <section id="view-git" class="view">
+    <div class="subview-bar">
+      <div class="subview-title">Comandos Git & GitHub</div>
+      <button class="back-btn" type="button" data-go="view-home">← Início</button>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-header"><div class="card-title">1. Subir Alterações do Dia (Mais Usado)</div></div>
+        <div class="cmd-group">
+          <div class="cmd-item">
+            <span class="cmd-label">Fluxo completo para enviar código</span>
+            <pre class="cmd-code">git status
+git add .
+git commit -m "atualizacao"
+git push</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">2. Iniciar Projeto Novo e Subir</div></div>
+        <div class="cmd-group">
+          <div class="cmd-item">
+            <span class="cmd-label">Conectar pasta local ao GitHub</span>
+            <pre class="cmd-code">git init
+git add .
+git commit -m "primeiro commit"
+git branch -M main
+git remote add origin URL_DO_REPO
+git push -u origin main</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">3. Atualizar & Corrigir</div></div>
+        <div class="cmd-group">
+          <div class="cmd-item">
+            <span class="cmd-label">Baixar alterações do GitHub</span>
+            <pre class="cmd-code">git pull origin main</pre>
+          </div>
+          <div class="cmd-item">
+            <span class="cmd-label">Desfazer último commit (mantendo arquivos)</span>
+            <pre class="cmd-code">git reset --soft HEAD~1</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODAL DE CORES DO TEMA ESCURO -->
+  <div id="theme-modal" role="dialog" aria-modal="true" aria-labelledby="theme-modal-title">
+    <div class="theme-dialog">
+      <div class="card-header" style="margin-bottom:4px;">
+        <div class="card-title" id="theme-modal-title">Cor do Tema Escuro</div>
+        <button id="close-theme-modal" class="del-btn" type="button" aria-label="Fechar">×</button>
+      </div>
+      <button class="theme-option" type="button" data-theme-choice="navy">
+        <span>Azul Noturno</span>
+        <span class="theme-swatch" style="background:#38bdf8;"></span>
+      </button>
+      <button class="theme-option" type="button" data-theme-choice="emerald">
+        <span>Esmeralda Escuro</span>
+        <span class="theme-swatch" style="background:#34d399;"></span>
+      </button>
+      <button class="theme-option" type="button" data-theme-choice="amber">
+        <span>Âmbar Quente</span>
+        <span class="theme-swatch" style="background:#fbbf24;"></span>
+      </button>
+      <button class="theme-option" type="button" data-theme-choice="violet">
+        <span>Violeta Escuro</span>
+        <span class="theme-swatch" style="background:#a78bfa;"></span>
+      </button>
+      <button class="theme-option" type="button" data-theme-choice="graphite">
+        <span>Grafite Neutro</span>
+        <span class="theme-swatch" style="background:#94a3b8;"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- CAMADA DE ESCURECIMENTO SUAVE -->
+  <div id="dim-overlay"></div>
+
+  <script>
+    /* ================= NAVEGAÇÃO ENTRE ABAS ================= */
+    function showView(viewId) {
+      document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+      const target = document.getElementById(viewId);
+      if (target) target.classList.add("active");
+    }
+
+    document.getElementById("clock").onclick = () => showView("view-chrono");
+    document.getElementById("date").onclick = () => {
+      renderCalendar();
+      showView("view-calendar");
+    };
+    document.getElementById("open-goals-btn").onclick = () => {
+      renderGoalBlocks();
+      showView("view-goals");
+    };
+    document.getElementById("open-git-btn").onclick = () => showView("view-git");
+
+    document.querySelectorAll("[data-go]").forEach(btn => {
+      btn.onclick = () => showView(btn.dataset.go);
+    });
+
+    /* ================= RELÓGIO (SEM SEGUNDOS) & DATA ================= */
+    function getTodayISO() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    function getTomorrowISO() {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    let lastCheckedDay = getTodayISO();
+
+    function updateClock() {
+      const now = new Date();
+      document.getElementById("clock").textContent = now.toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+      document.getElementById("date").textContent = now.toLocaleDateString("pt-BR", {
+        weekday: "long",
+        day: "2-digit",
+        month: "long"
+      });
+
+      const currentDay = getTodayISO();
+      if (currentDay !== lastCheckedDay) {
+        lastCheckedDay = currentDay;
+        renderSpecialAlerts();
+      }
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    /* ================= CLIMA (APARECIDA DE GOIÂNIA) ================= */
+    async function loadWeather() {
+      try {
+        const url = "https://api.open-meteo.com/v1/forecast?latitude=-16.8239&longitude=-49.2439&current=temperature_2m,wind_speed_10m,weather_code&timezone=America%2FSao_Paulo";
+        const res = await fetch(url);
+        const data = await res.json();
+        const temp = Math.round(data.current.temperature_2m);
+        const wind = Math.round(data.current.wind_speed_10m);
+        const code = data.current.weather_code;
+        const descMap = {
+          0: "Céu limpo", 1: "Predomínio de sol", 2: "Parcialmente nublado",
+          3: "Nublado", 45: "Neblina", 61: "Chuva fraca",
+          63: "Chuva moderada", 80: "Pancadas de chuva", 95: "Trovoada"
+        };
+        document.getElementById("temp").textContent = `${temp}°C`;
+        document.getElementById("weather-desc").textContent = descMap[code] || "Condição variável";
+        document.getElementById("wind").textContent = `Vento: ${wind} km/h`;
+      } catch {
+        document.getElementById("weather-desc").textContent = "Sem conexão com clima";
+      }
+    }
+    loadWeather();
+    setInterval(loadWeather, 15 * 60 * 1000);
+
+    /* ================= FOCO DO DIA (TAREFAS) ================= */
+    const TASKS_KEY = "painel_tasks_v2";
+    let tasks = JSON.parse(localStorage.getItem(TASKS_KEY) || "[]");
+
+    const taskListEl = document.getElementById("task-list");
+    const toggleTaskBtn = document.getElementById("toggle-task-form");
+    const taskFormEl = document.getElementById("task-form");
+    const taskInputEl = document.getElementById("task-input");
+
+    function setTaskFormOpen(open) {
+      taskFormEl.classList.toggle("open", open);
+      toggleTaskBtn.textContent = open ? "×" : "+";
+      if (open) taskInputEl.focus();
+      else taskInputEl.value = "";
+    }
+
+    toggleTaskBtn.onclick = () => setTaskFormOpen(!taskFormEl.classList.contains("open"));
+
+    function saveTasks() {
+      localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+    }
+
+    function renderTasks() {
+      taskListEl.innerHTML = "";
+      tasks.forEach((task, idx) => {
+        const li = document.createElement("li");
+        if (task.done) li.classList.add("done");
+
+        const left = document.createElement("div");
+        left.className = "task-item-left";
+
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.className = "task-check";
+        cb.checked = Boolean(task.done);
+        cb.onchange = () => { tasks[idx].done = !tasks[idx].done; saveTasks(); renderTasks(); };
+
+        const span = document.createElement("span");
+        span.className = "task-text";
+        span.textContent = task.text;
+        span.onclick = () => { tasks[idx].done = !tasks[idx].done; saveTasks(); renderTasks(); };
+
+        left.append(cb, span);
+
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className = "del-btn";
+        del.textContent = "×";
+        del.onclick = () => { tasks.splice(idx, 1); saveTasks(); renderTasks(); };
+
+        li.append(left, del);
+        taskListEl.appendChild(li);
+      });
+    }
+
+    taskFormEl.onsubmit = (e) => {
+      e.preventDefault();
+      const text = taskInputEl.value.trim();
+      if (!text) return;
+      tasks.unshift({ text, done: false });
+      saveTasks();
+      renderTasks();
+      setTaskFormOpen(false);
+    };
+    renderTasks();
+
+    /* ================= CRONÔMETRO (MILISSEGUNDOS) & TIMER ================= */
+    let chronoTimerId = null;
+    let chronoRunning = false;
+    let chronoStartTime = 0;
+    let elapsedMs = 0;
+    let targetMs = 0;
+    let isCountdown = false;
+
+    const chronoDisplay = document.getElementById("chrono-display");
+    const chronoStartBtn = document.getElementById("chrono-start");
+    const chronoModeLabel = document.getElementById("chrono-mode-label");
+
+    function formatMillis(ms) {
+      const total = Math.max(0, Math.floor(ms));
+      const totalSec = Math.floor(total / 1000);
+      const h = Math.floor(totalSec / 3600);
+      const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, "0");
+      const s = String(totalSec % 60).padStart(2, "0");
+      const cs = String(Math.floor((total % 1000) / 10)).padStart(2, "0");
+      return h > 0 ? `${String(h).padStart(2, "0")}:${m}:${s}.${cs}` : `${m}:${s}.${cs}`;
+    }
+
+    function updateChronoUI() {
+      const currentMs = isCountdown ? Math.max(0, targetMs - elapsedMs) : elapsedMs;
+      chronoDisplay.textContent = formatMillis(currentMs);
+      chronoStartBtn.textContent = chronoRunning ? "Pausar" : "Iniciar";
+      chronoStartBtn.className = chronoRunning ? "btn-lg pause" : "btn-lg start";
+    }
+
+    function stopChrono() {
+      clearInterval(chronoTimerId);
+      chronoTimerId = null;
+      if (chronoRunning) {
+        elapsedMs += performance.now() - chronoStartTime;
+        chronoRunning = false;
+      }
+      updateChronoUI();
+    }
+
+    chronoStartBtn.onclick = () => {
+      if (chronoRunning) {
+        stopChrono();
+        return;
+      }
+      if (isCountdown && elapsedMs >= targetMs) {
+        elapsedMs = 0;
+      }
+      chronoRunning = true;
+      chronoStartTime = performance.now();
+      updateChronoUI();
+
+      chronoTimerId = setInterval(() => {
+        const nowElapsed = elapsedMs + (performance.now() - chronoStartTime);
+        if (isCountdown) {
+          const remaining = targetMs - nowElapsed;
+          if (remaining <= 0) {
+            elapsedMs = targetMs;
+            clearInterval(chronoTimerId);
+            chronoTimerId = null;
+            chronoRunning = false;
+            chronoModeLabel.textContent = "Tempo concluído!";
+            updateChronoUI();
+            return;
+          }
+          chronoDisplay.textContent = formatMillis(remaining);
+        } else {
+          chronoDisplay.textContent = formatMillis(nowElapsed);
+        }
+      }, 30);
+    };
+
+    document.getElementById("chrono-reset").onclick = () => {
+      clearInterval(chronoTimerId);
+      chronoTimerId = null;
+      chronoRunning = false;
+      elapsedMs = 0;
+      if (!isCountdown) {
+        chronoModeLabel.textContent = "Cronômetro Livre (Milissegundos)";
+      }
+      updateChronoUI();
+    };
+
+    document.querySelectorAll(".preset-timer").forEach(btn => {
+      btn.onclick = () => {
+        clearInterval(chronoTimerId);
+        chronoTimerId = null;
+        chronoRunning = false;
+        const mins = Number(btn.dataset.min);
+        isCountdown = true;
+        targetMs = mins * 60 * 1000;
+        elapsedMs = 0;
+        chronoModeLabel.textContent = `Timer Regressivo (${mins} min)`;
+        updateChronoUI();
+      };
+    });
+
+    document.getElementById("mode-stopwatch").onclick = () => {
+      clearInterval(chronoTimerId);
+      chronoTimerId = null;
+      chronoRunning = false;
+      isCountdown = false;
+      targetMs = 0;
+      elapsedMs = 0;
+      chronoModeLabel.textContent = "Cronômetro Livre (Milissegundos)";
+      updateChronoUI();
+    };
+
+    /* ================= CALENDÁRIO & DATAS ESPECIAIS ================= */
+    const SPECIAL_KEY = "painel_special_dates_v1";
+    let specialDates = JSON.parse(localStorage.getItem(SPECIAL_KEY) || "[]");
+
+    let calDate = new Date();
+    let selectedISO = getTodayISO();
+    let yearViewMode = false;
+
+    function saveSpecialDates() {
+      localStorage.setItem(SPECIAL_KEY, JSON.stringify(specialDates));
+      renderSpecialAlerts();
+    }
+
+    function renderSpecialAlerts() {
+      const container = document.getElementById("special-alerts");
+      container.innerHTML = "";
+      const today = getTodayISO();
+      const tomorrow = getTomorrowISO();
+
+      const matches = specialDates.filter(item => item.date === today || item.date === tomorrow);
+      if (matches.length === 0) {
+        container.classList.remove("has-alerts");
+        return;
+      }
+
+      container.classList.add("has-alerts");
+      matches.forEach(item => {
+        const div = document.createElement("div");
+        const isToday = item.date === today;
+        div.className = isToday ? "alert-banner today" : "alert-banner";
+        div.innerHTML = `<span><strong>${isToday ? "HOJE:" : "AMANHÃ:"}</strong> ${item.title}</span>`;
+        container.appendChild(div);
+      });
+    }
+
+    function formatBRDate(iso) {
+      const [y, m, d] = iso.split("-");
+      return `${d}/${m}/${y}`;
+    }
+
+    function renderSelectedDateList() {
+      document.getElementById("selected-date-label").textContent = `Data selecionada: ${formatBRDate(selectedISO)}`;
+      const list = document.getElementById("special-dates-list");
+      list.innerHTML = "";
+      const sorted = [...specialDates].sort((a, b) => a.date.localeCompare(b.date));
+      sorted.forEach((item) => {
+        const realIdx = specialDates.indexOf(item);
+        const li = document.createElement("li");
+        li.innerHTML = `<span><strong>${formatBRDate(item.date)}</strong> — ${item.title}</span>`;
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className = "del-btn";
+        del.textContent = "×";
+        del.onclick = () => {
+          specialDates.splice(realIdx, 1);
+          saveSpecialDates();
+          renderCalendar();
+        };
+        li.appendChild(del);
+        list.appendChild(li);
+      });
+    }
+
+    function renderCalendar() {
+      const year = calDate.getFullYear();
+      const month = calDate.getMonth();
+      const todayISO = getTodayISO();
+      const specialSet = new Set(specialDates.map(d => d.date));
+
+      const monthContainer = document.getElementById("cal-month-container");
+      const yearContainer = document.getElementById("cal-year-container");
+      const headerLabel = document.getElementById("cal-header-label");
+
+      if (!yearViewMode) {
+        monthContainer.style.display = "block";
+        yearContainer.style.display = "none";
+        headerLabel.textContent = calDate.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+
+        const daysGrid = document.getElementById("cal-days");
+        daysGrid.innerHTML = "";
+
+        const firstDay = new Date(year, month, 1).getDay();
+        const totalDays = new Date(year, month + 1, 0).getDate();
+
+        for (let i = 0; i < firstDay; i++) {
+          const empty = document.createElement("div");
+          empty.className = "cal-day empty";
+          daysGrid.appendChild(empty);
+        }
+
+        for (let d = 1; d <= totalDays; d++) {
+          const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+          const cell = document.createElement("div");
+          cell.className = "cal-day";
+          if (iso === todayISO) cell.classList.add("today");
+          if (specialSet.has(iso)) cell.classList.add("special");
+          if (iso === selectedISO) cell.style.outline = "2px solid var(--text)";
+          cell.textContent = d;
+          cell.onclick = () => {
+            selectedISO = iso;
+            renderCalendar();
+          };
+          daysGrid.appendChild(cell);
+        }
+      } else {
+        monthContainer.style.display = "none";
+        yearContainer.style.display = "grid";
+        headerLabel.textContent = `Ano ${year}`;
+        yearContainer.innerHTML = "";
+
+        for (let m = 0; m < 12; m++) {
+          const mBox = document.createElement("div");
+          mBox.className = "mini-month";
+          const mName = new Date(year, m, 1).toLocaleDateString("pt-BR", { month: "long" });
+          mBox.innerHTML = `<div class="mini-month-title">${mName}</div>`;
+
+          const mGrid = document.createElement("div");
+          mGrid.className = "mini-days";
+          const first = new Date(year, m, 1).getDay();
+          const count = new Date(year, m + 1, 0).getDate();
+
+          for (let i = 0; i < first; i++) {
+            mGrid.appendChild(document.createElement("span"));
+          }
+          for (let d = 1; d <= count; d++) {
+            const iso = `${year}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+            const sp = document.createElement("span");
+            sp.textContent = d;
+            if (iso === todayISO) sp.classList.add("today");
+            if (specialSet.has(iso)) sp.classList.add("special");
+            sp.onclick = () => {
+              selectedISO = iso;
+              calDate = new Date(year, m, 1);
+              yearViewMode = false;
+              document.getElementById("cal-toggle-year").textContent = "Ver Ano Inteiro";
+              renderCalendar();
+            };
+            mGrid.appendChild(sp);
+          }
+          mBox.appendChild(mGrid);
+          yearContainer.appendChild(mBox);
+        }
+      }
+      renderSelectedDateList();
+    }
+
+    document.getElementById("cal-prev").onclick = () => {
+      if (yearViewMode) calDate.setFullYear(calDate.getFullYear() - 1);
+      else calDate.setMonth(calDate.getMonth() - 1);
+      renderCalendar();
+    };
+
+    document.getElementById("cal-next").onclick = () => {
+      if (yearViewMode) calDate.setFullYear(calDate.getFullYear() + 1);
+      else calDate.setMonth(calDate.getMonth() + 1);
+      renderCalendar();
+    };
+
+    document.getElementById("cal-toggle-year").onclick = (e) => {
+      yearViewMode = !yearViewMode;
+      e.target.textContent = yearViewMode ? "Ver Mês" : "Ver Ano Inteiro";
+      renderCalendar();
+    };
+
+    document.getElementById("special-date-form").onsubmit = (e) => {
+      e.preventDefault();
+      const input = document.getElementById("special-title-input");
+      const title = input.value.trim();
+      if (!title) return;
+      specialDates.push({ date: selectedISO, title });
+      saveSpecialDates();
+      input.value = "";
+      renderCalendar();
+    };
+
+    renderSpecialAlerts();
+
+    /* ================= METAS POR BLOCOS ================= */
+    const GOALS_KEY = "painel_goal_blocks_v1";
+    let goalBlocks = JSON.parse(localStorage.getItem(GOALS_KEY) || "null") || [
+      { title: "Projetos Dev", items: [{ text: "Subir atualização no GitHub", done: false }] },
+      { title: "Rotina & Estudos", items: [{ text: "Revisar matéria da faculdade", done: false }] }
+    ];
+
+    function saveGoalBlocks() {
+      localStorage.setItem(GOALS_KEY, JSON.stringify(goalBlocks));
+    }
+
+    document.getElementById("toggle-block-form").onclick = () => {
+      const card = document.getElementById("new-block-card");
+      const isHidden = card.style.display === "none";
+      card.style.display = isHidden ? "block" : "none";
+      if (isHidden) document.getElementById("block-name-input").focus();
+    };
+
+    document.getElementById("block-form").onsubmit = (e) => {
+      e.preventDefault();
+      const input = document.getElementById("block-name-input");
+      const title = input.value.trim();
+      if (!title) return;
+      goalBlocks.push({ title, items: [] });
+      saveGoalBlocks();
+      input.value = "";
+      document.getElementById("new-block-card").style.display = "none";
+      renderGoalBlocks();
+    };
+
+    function renderGoalBlocks() {
+      const grid = document.getElementById("goals-grid");
+      grid.innerHTML = "";
+
+      goalBlocks.forEach((block, bIdx) => {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const header = document.createElement("div");
+        header.className = "card-header";
+        header.innerHTML = `<div class="card-title">${block.title}</div>`;
+
+        const actions = document.createElement("div");
+        actions.className = "card-actions";
+
+        const addBtn = document.createElement("button");
+        addBtn.type = "button";
+        addBtn.className = "icon-btn primary";
+        addBtn.textContent = "+";
+
+        const delBlockBtn = document.createElement("button");
+        delBlockBtn.type = "button";
+        delBlockBtn.className = "del-btn";
+        delBlockBtn.textContent = "×";
+        delBlockBtn.title = "Apagar bloco";
+        delBlockBtn.onclick = () => {
+          goalBlocks.splice(bIdx, 1);
+          saveGoalBlocks();
+          renderGoalBlocks();
+        };
+
+        actions.append(addBtn, delBlockBtn);
+        header.appendChild(actions);
+
+        const form = document.createElement("form");
+        form.className = "inline-form";
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "input-field";
+        input.placeholder = "Nova meta neste bloco...";
+        input.required = true;
+        const okBtn = document.createElement("button");
+        okBtn.type = "submit";
+        okBtn.className = "save-btn";
+        okBtn.textContent = "OK";
+        form.append(input, okBtn);
+
+        addBtn.onclick = () => {
+          const open = !form.classList.contains("open");
+          form.classList.toggle("open", open);
+          addBtn.textContent = open ? "×" : "+";
+          if (open) input.focus();
+        };
+
+        form.onsubmit = (e) => {
+          e.preventDefault();
+          const text = input.value.trim();
+          if (!text) return;
+          block.items.push({ text, done: false });
+          saveGoalBlocks();
+          renderGoalBlocks();
+        };
+
+        const ul = document.createElement("ul");
+        ul.className = "clean-list";
+        block.items.forEach((item, iIdx) => {
+          const li = document.createElement("li");
+          if (item.done) li.classList.add("done");
+
+          const left = document.createElement("div");
+          left.className = "task-item-left";
+
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.className = "task-check";
+          cb.checked = Boolean(item.done);
+          cb.onchange = () => {
+            item.done = !item.done;
+            saveGoalBlocks();
+            renderGoalBlocks();
+          };
+
+          const span = document.createElement("span");
+          span.className = "task-text";
+          span.textContent = item.text;
+          span.onclick = () => {
+            item.done = !item.done;
+            saveGoalBlocks();
+            renderGoalBlocks();
+          };
+
+          left.append(cb, span);
+
+          const delItem = document.createElement("button");
+          delItem.type = "button";
+          delItem.className = "del-btn";
+          delItem.textContent = "×";
+          delItem.onclick = () => {
+            block.items.splice(iIdx, 1);
+            saveGoalBlocks();
+            renderGoalBlocks();
+          };
+
+          li.append(left, delItem);
+          ul.appendChild(li);
+        });
+
+        card.append(header, form, ul);
+        grid.appendChild(card);
+      });
+    }
+
+    /* ================= LUMINOSIDADE (TOQUE) & TEMA (PRESSÃO LONGA) ================= */
+    const dimOverlay = document.getElementById("dim-overlay");
+    const dimBtn = document.getElementById("dim-btn");
+    const dimLabel = document.getElementById("dim-label");
+    const dimLevels = [
+      { opacity: 0, label: "Brilho" },
+      { opacity: 0.35, label: "Suave" },
+      { opacity: 0.65, label: "Escuro" }
+    ];
+    let dimIdx = 0;
+
+    function cycleDimLevel() {
+      dimIdx = (dimIdx + 1) % dimLevels.length;
+      dimOverlay.style.opacity = String(dimLevels[dimIdx].opacity);
+      dimLabel.textContent = dimLevels[dimIdx].label;
+    }
+
+    const THEME_KEY = "painel_dark_theme_v1";
+    const themeModal = document.getElementById("theme-modal");
+    const themeOptions = document.querySelectorAll("[data-theme-choice]");
+
+    function applyTheme(themeName) {
+      document.body.setAttribute("data-theme", themeName);
+      localStorage.setItem(THEME_KEY, themeName);
+      themeOptions.forEach(opt => {
+        opt.classList.toggle("active", opt.dataset.themeChoice === themeName);
+      });
+    }
+
+    applyTheme(localStorage.getItem(THEME_KEY) || "navy");
+
+    let longPressTimer = null;
+    let longPressTriggered = false;
+    const LONG_PRESS_MS = 550;
+
+    function startDimPress() {
+      longPressTriggered = false;
+      clearTimeout(longPressTimer);
+      longPressTimer = setTimeout(() => {
+        longPressTriggered = true;
+        themeModal.classList.add("open");
+      }, LONG_PRESS_MS);
+    }
+
+    function cancelDimPress(shouldCycleOnTap) {
+      clearTimeout(longPressTimer);
+      if (shouldCycleOnTap && !longPressTriggered) {
+        cycleDimLevel();
+      }
+    }
+
+    dimBtn.addEventListener("pointerdown", () => startDimPress());
+    dimBtn.addEventListener("pointerup", () => cancelDimPress(true));
+    dimBtn.addEventListener("pointerleave", () => cancelDimPress(false));
+    dimBtn.addEventListener("pointercancel", () => cancelDimPress(false));
+    dimBtn.addEventListener("contextmenu", (e) => e.preventDefault());
+
+    themeOptions.forEach(opt => {
+      opt.onclick = () => {
+        applyTheme(opt.dataset.themeChoice);
+        themeModal.classList.remove("open");
+      };
+    });
+
+    document.getElementById("close-theme-modal").onclick = () => {
+      themeModal.classList.remove("open");
+    };
+
+    themeModal.onclick = (e) => {
+      if (e.target === themeModal) {
+        themeModal.classList.remove("open");
+      }
+    };
+
+    /* ================= TELA CHEIA ================= */
+    document.getElementById("fs-btn").onclick = () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    };
+  </script>
+</body>
+</html>
